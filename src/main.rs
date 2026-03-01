@@ -1,11 +1,12 @@
 use clap::Parser;
 use colored::Colorize;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 mod args;
 use args::Args;
+mod desktop_entry;
+use desktop_entry::DesktopEntry;
 mod utils;
 use utils::{capitalize_name, get_app_name, get_file_name};
 mod directory;
@@ -16,37 +17,6 @@ mod appimage;
 use appimage::{check_extension, move_appimage};
 mod icon;
 use icon::{copy_icon, extract_icon_from_appimage};
-
-struct DesktopEntry {
-    name: String,
-    exec: PathBuf,
-    icon: PathBuf,
-    categories: String,
-    startup_wm_class: String,
-}
-impl DesktopEntry {
-    fn generate_content(&self) -> String {
-        format!(
-            "[Desktop Entry]\n\
-            Type=Application\n\
-            Name={}\n\
-            Exec={}\n\
-            Icon={}\n\
-            Categories={}\n\
-            Terminal=false\n\
-            StartupWMClass={}",
-            self.name,
-            self.exec.display(),
-            self.icon.display(),
-            self.categories,
-            self.startup_wm_class
-        )
-    }
-
-    fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
-        fs::write(path, self.generate_content())
-    }
-}
 
 fn main() {
     let args = Args::parse();
