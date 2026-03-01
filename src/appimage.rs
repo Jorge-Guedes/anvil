@@ -28,14 +28,30 @@ pub fn move_appimage(source: &str, destination: &Path, file_name: &OsStr, verbos
         );
     }
 
-    if let Err(e) = std::fs::rename(source, destination) {
-        eprintln!(
-            "{} Could not move file: {}. \n{} Try using a path on the same disk.",
-            "ERROR:".red().bold(),
-            e,
-            "TIP:".yellow()
-        );
-        return false;
+    if let Err(_) = std::fs::rename(source, destination) {
+        if verbose {
+            println!(
+                "{} Cross-device move detected, copying instead...",
+                "INFO:".yellow()
+            );
+        }
+
+        if let Err(e) = std::fs::copy(source, destination) {
+            eprintln!("{} Could not copy file: {}", "ERROR:".red().bold(), e);
+            return false;
+        }
+
+        if let Err(e) = std::fs::remove_file(source) {
+            if verbose {
+                println!(
+                    "{} Could not remove source file after copy: {}",
+                    "WARN:".yellow(),
+                    e
+                );
+            }
+        } else if verbose {
+            println!("{} Source file cleaned up", "INFO:".cyan());
+        }
     }
 
     if verbose {

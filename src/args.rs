@@ -14,7 +14,7 @@ pub struct Args {
     #[arg(
         short,
         long,
-        default_value = ".Applications",
+        default_value = ".Applications_AppImage",
         help = "Destination directory under HOME (default: .Applications_AppImage)"
     )]
     pub destination: String,
