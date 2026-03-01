@@ -7,10 +7,7 @@ pub fn get_file_name(source: &str) -> Option<OsString> {
     match path.file_name() {
         Some(name) => Some(name.to_os_string()),
         None => {
-            eprintln!(
-                "{} No se pudo obtener el nombre del archivo",
-                "ERROR:".red()
-            );
+            eprintln!("{} Could not get file name", "ERROR:".red().bold());
             None
         }
     }

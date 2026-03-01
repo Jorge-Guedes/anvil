@@ -10,17 +10,20 @@ pub fn get_home_subdirectory(folder_name: &str) -> Option<PathBuf> {
     }
 }
 
-pub fn setup_app_directory(base_path: &Path, app_name: &str) -> Option<PathBuf> {
+pub fn setup_app_directory(base_path: &Path, app_name: &str, verbose: bool) -> Option<PathBuf> {
     if let Err(e) = std::fs::create_dir_all(base_path) {
         eprintln!(
             "{} {} {}",
             "ERROR:".red().bold(),
-            "No se pudo crear la carpeta base:".red(),
+            "Could not create base folder:",
             e
         );
         return None;
     }
-    println!("{}", "Carpeta base lista".green().bold());
+
+    if verbose {
+        println!("{} Base folder ready", "INFO:".cyan());
+    }
 
     let app_dir = base_path.join(app_name);
 
@@ -28,29 +31,31 @@ pub fn setup_app_directory(base_path: &Path, app_name: &str) -> Option<PathBuf> 
         eprintln!(
             "{} {} {}",
             "ERROR:".red().bold(),
-            "No se pudo crear la carpeta de la aplicación:".red(),
+            "Could not create app folder:",
             e
         );
         return None;
     }
 
-    println!(
-        "{} {}",
-        "Carpeta de aplicación creada:".green().bold(),
-        app_dir.display().to_string().purple()
-    );
+    if verbose {
+        println!(
+            "{} App folder created: {}",
+            "INFO:".cyan(),
+            app_dir.display()
+        );
+    }
 
     Some(app_dir)
 }
 
-pub fn setup_desktop_entries_dir() -> Option<PathBuf> {
+pub fn setup_desktop_entries_dir(verbose: bool) -> Option<PathBuf> {
     let home = match dirs::home_dir() {
         Some(path) => path,
         None => {
             eprintln!(
                 "{} {}",
                 "ERROR:".red().bold(),
-                "No se pudo encontrar el directorio HOME".red()
+                "Could not find HOME directory"
             );
             return None;
         }
@@ -60,13 +65,15 @@ pub fn setup_desktop_entries_dir() -> Option<PathBuf> {
 
     if let Err(e) = fs::create_dir_all(&desktop_dir) {
         eprintln!(
-            "{} No se pudo crear el directorio de entradas: {}",
+            "{} Could not create desktop entries directory: {}",
             "ERROR:".red().bold(),
             e
         );
         return None;
     }
 
-    println!("{}", "Directorio de entradas listo".green().bold());
+    if verbose {
+        println!("{} Desktop entries directory ready", "INFO:".cyan());
+    }
     Some(desktop_dir)
 }

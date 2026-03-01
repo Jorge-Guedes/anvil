@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub fn copy_icon(icon_source: &str, app_dir: &Path) -> Option<PathBuf> {
+pub fn copy_icon(icon_source: &str, app_dir: &Path, verbose: bool) -> Option<PathBuf> {
     let icon_path = Path::new(icon_source);
     let icon_name = match icon_path.file_name() {
         Some(name) => name,
@@ -11,7 +11,7 @@ pub fn copy_icon(icon_source: &str, app_dir: &Path) -> Option<PathBuf> {
             eprintln!(
                 "{} {}",
                 "ERROR:".red().bold(),
-                "No se pudo obtener el nombre del archivo de icono".red()
+                "Could not get icon filename"
             );
             return None;
         }
@@ -19,22 +19,23 @@ pub fn copy_icon(icon_source: &str, app_dir: &Path) -> Option<PathBuf> {
 
     let icon_dest = app_dir.join(icon_name);
 
-    println!(
-        "Copiando icono {} a {}",
-        icon_source.purple().bold(),
-        icon_dest.display().to_string().purple().bold()
-    );
+    if verbose {
+        println!(
+            "{} Copying icon from {} to {}",
+            "INFO:".cyan(),
+            icon_source,
+            icon_dest.display()
+        );
+    }
 
     if let Err(e) = std::fs::copy(icon_source, &icon_dest) {
-        eprintln!(
-            "{} No se pudo copiar el icono: {}",
-            "ERROR:".red().bold(),
-            e
-        );
+        eprintln!("{} Could not copy icon: {}", "ERROR:".red().bold(), e);
         return None;
     }
 
-    println!("{}", "¡Icono copiado correctamente!".green().bold());
+    if verbose {
+        println!("{} Icon copied successfully", "INFO:".cyan());
+    }
     Some(icon_dest)
 }
 
@@ -119,8 +120,14 @@ pub fn select_best_icon(icons: Vec<PathBuf>) -> Option<PathBuf> {
     None
 }
 
-pub fn extract_icon_from_appimage(appimage_path: &Path, app_dir: &Path) -> Option<PathBuf> {
-    println!("{} Extrayendo contenidos del AppImage...", "INFO:".cyan());
+pub fn extract_icon_from_appimage(
+    appimage_path: &Path,
+    app_dir: &Path,
+    verbose: bool,
+) -> Option<PathBuf> {
+    if verbose {
+        println!("{} Extracting AppImage contents...", "INFO:".cyan());
+    }
 
     match Command::new(appimage_path)
         .arg("--appimage-extract")
@@ -130,22 +137,26 @@ pub fn extract_icon_from_appimage(appimage_path: &Path, app_dir: &Path) -> Optio
             let icons = find_icons_in_dir(Path::new("squashfs-root"));
 
             if icons.is_empty() {
-                eprintln!("{} No se encontraron iconos", "WARN:".yellow());
+                eprintln!("{} No icons found", "WARN:".yellow().bold());
                 let _ = fs::remove_dir_all("squashfs-root");
                 return None;
             }
 
-            println!("{} Se encontraron {} iconos", "INFO:".cyan(), icons.len());
+            if verbose {
+                println!("{} Found {} icons", "INFO:".cyan(), icons.len());
+            }
 
             if let Some(best_icon) = select_best_icon(icons) {
-                println!("{} Mejor icono: {:?}", "INFO:".cyan(), best_icon);
+                if verbose {
+                    println!("{} Best icon: {:?}", "INFO:".cyan(), best_icon);
+                }
 
                 if let Some(icon_str) = best_icon.to_str() {
-                    let result = copy_icon(icon_str, app_dir);
+                    let result = copy_icon(icon_str, app_dir, verbose);
                     let _ = fs::remove_dir_all("squashfs-root");
                     return result;
                 } else {
-                    eprintln!("{} La ruta del icono no es válida", "WARN:".yellow());
+                    eprintln!("{} Invalid icon path", "WARN:".yellow().bold());
                 }
             }
 
@@ -156,13 +167,13 @@ pub fn extract_icon_from_appimage(appimage_path: &Path, app_dir: &Path) -> Optio
             eprintln!(
                 "{} {} {}",
                 "ERROR:".red().bold(),
-                "El comando falló con código: {}".red(),
+                "Command failed with code:",
                 status
             );
             None
         }
         Err(e) => {
-            eprintln!("{} No se pudo ejecutar: {}", "ERROR:".red().bold(), e);
+            eprintln!("{} Could not execute: {}", "ERROR:".red().bold(), e);
             None
         }
     }

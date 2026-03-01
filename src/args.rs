@@ -6,7 +6,7 @@ pub struct Args {
     #[arg(short, long)]
     pub source: String,
 
-    #[arg(short, long, default_value = ".Applications_prueba")]
+    #[arg(short, long, default_value = ".Applications")]
     pub destination: String,
 
     #[arg(short, long)]
@@ -17,4 +17,7 @@ pub struct Args {
 
     #[arg(short, long, default_value = "Utility")]
     pub categories: String,
+
+    #[arg(short, long)]
+    pub verbose: bool,
 }

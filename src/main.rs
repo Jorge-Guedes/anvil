@@ -25,9 +25,9 @@ fn main() {
         eprintln!(
             "{} {} {} {}",
             "ERROR:".red().bold(),
-            "Archivo".red(),
+            "File",
             args.source.purple().bold(),
-            "no encontrado".red()
+            "not found"
         );
         return;
     }
@@ -35,8 +35,8 @@ fn main() {
     let Some(destination_path) = get_home_subdirectory(&args.destination) else {
         eprintln!(
             "{} {}",
-            "Error".red().bold(),
-            "No se pudo encontrar el HOME".red()
+            "ERROR:".red().bold(),
+            "Could not find HOME directory"
         );
         return;
     };
@@ -45,7 +45,7 @@ fn main() {
         return;
     };
 
-    if !check_extension(&args.source) {
+    if !check_extension(&args.source, args.verbose) {
         return;
     }
 
@@ -54,45 +54,51 @@ fn main() {
 
     let capitalized_name = capitalize_name(&app_folder_name);
 
-    let Some(app_dir) = setup_app_directory(&destination_path, &capitalized_name) else {
+    let Some(app_dir) = setup_app_directory(&destination_path, &capitalized_name, args.verbose)
+    else {
         return;
     };
 
     let final_file_path = app_dir.join(&file_name);
 
-    if !move_appimage(&args.source, &final_file_path, &file_name) {
+    if !move_appimage(&args.source, &final_file_path, &file_name, args.verbose) {
         return;
     }
 
-    if !set_executable_permissions(&final_file_path) {
+    if !set_executable_permissions(&final_file_path, args.verbose) {
         return;
     }
 
     let icon_path = if let Some(icon_source) = &args.icon {
-        match copy_icon(icon_source, &app_dir) {
+        match copy_icon(icon_source, &app_dir, args.verbose) {
             Some(path) => {
-                println!("{}", "Icono copiado correctamente".green().bold());
+                if args.verbose {
+                    println!("{} Icon copied successfully", "INFO:".cyan());
+                }
                 path
             }
             None => return,
         }
     } else {
-        match extract_icon_from_appimage(&final_file_path, &app_dir) {
+        match extract_icon_from_appimage(&final_file_path, &app_dir, args.verbose) {
             Some(path) => {
-                println!("{}", "Icono extraído correctamente".green().bold());
+                if args.verbose {
+                    println!("{} Icon extracted successfully", "INFO:".cyan());
+                }
                 path
             }
             None => {
                 eprintln!(
-                    "{} No se pudo obtener icono, se continuará sin él",
-                    "WARN:".yellow()
+                    "{} Could not obtain icon, continuing without it",
+                    "WARN:".yellow().bold()
                 );
+
                 PathBuf::new()
             }
         }
     };
 
-    let Some(desktop_entries_dir) = setup_desktop_entries_dir() else {
+    let Some(desktop_entries_dir) = setup_desktop_entries_dir(args.verbose) else {
         return;
     };
 
@@ -109,15 +115,17 @@ fn main() {
 
     match desktop_entry.write_to_file(&desktop_file_path) {
         Ok(()) => {
-            println!(
-                "{} {}",
-                "Acceso directo creado en".green().bold(),
-                desktop_file_path.display().to_string().green().bold()
-            );
+            if args.verbose {
+                println!(
+                    "{} Desktop entry created at {}",
+                    "INFO:".cyan(),
+                    desktop_file_path.display()
+                );
+            }
         }
         Err(e) => {
             eprintln!(
-                "{} No se pudo crear el acceso directo: {}",
+                "{} Could not create desktop entry: {}",
                 "ERROR:".red().bold(),
                 e
             );
@@ -131,31 +139,33 @@ fn main() {
 
     match output {
         Ok(output) if output.status.success() => {
-            println!(
-                "{}",
-                "Base de datos de aplicaciones actualizada".green().bold()
-            );
+            if args.verbose {
+                println!(
+                    "{} Application database updated successfully",
+                    "INFO:".cyan()
+                );
+            }
         }
         Ok(output) => {
             eprintln!(
-                "{} No se pudo actualizar la base de datos (código: {})",
+                "{} Could not update application database (code: {})",
                 "WARN:".yellow(),
                 output.status
             );
             println!(
-                "{} Para que la aplicación aparezca en el menú, ejecuta: update-desktop-database {}",
+                "{} If the app doesn't appear in the menu, run: update-desktop-database {}",
                 "TIP:".yellow(),
                 desktop_entries_dir.display()
             );
         }
         Err(e) => {
             eprintln!(
-                "{} No se pudo ejecutar update-desktop-database: {}",
+                "{} Could not run update-desktop-database: {}",
                 "WARN:".yellow(),
                 e
             );
             println!(
-                "{} Para que la aplicación aparezca en el menú, ejecuta: update-desktop-database {}",
+                "{} If the app doesn't appear in the menu, run: update-desktop-database {}",
                 "TIP:".yellow(),
                 desktop_entries_dir.display()
             );
@@ -163,8 +173,8 @@ fn main() {
     }
 
     println!(
-        "{} {}",
-        "¡instalado correctamente!".bright_green().bold(),
+        "{} {} installed successfully",
+        "SUCCESS:".green().bold(),
         capitalized_name.bright_cyan().bold()
     );
 }
