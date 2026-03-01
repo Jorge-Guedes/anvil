@@ -25,6 +25,37 @@ struct Args {
     categories: String,
 }
 
+struct DesktopEntry {
+    name: String,
+    exec: PathBuf,
+    icon: PathBuf,
+    categories: String,
+    startup_wm_class: String,
+}
+impl DesktopEntry {
+    fn generate_content(&self) -> String {
+        format!(
+            "[Desktop Entry]\n\
+            Type=Application\n\
+            Name={}\n\
+            Exec={}\n\
+            Icon={}\n\
+            Categories={}\n\
+            Terminal=false\n\
+            StartupWMClass={}",
+            self.name,
+            self.exec.display(),
+            self.icon.display(),
+            self.categories,
+            self.startup_wm_class
+        )
+    }
+
+    fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
+        fs::write(path, self.generate_content())
+    }
+}
+
 fn main() {
     let args = Args::parse();
 
@@ -75,16 +106,105 @@ fn main() {
         return;
     }
 
-    if let Some(icon_source) = &args.icon {
-        if !copy_icon(icon_source, &app_dir) {
-            return;
+    let icon_path = if let Some(icon_source) = &args.icon {
+        match copy_icon(icon_source, &app_dir) {
+            Some(path) => {
+                println!("{}", "Icono copiado correctamente".green().bold());
+                path
+            }
+            None => return,
         }
     } else {
-        if !extract_icon_from_appimage(&final_file_path, &app_dir) {
-            eprintln!("{} No se pudo extraer icono", "WARN:".yellow());
-            // No hacemos return, seguimos sin icono
+        match extract_icon_from_appimage(&final_file_path, &app_dir) {
+            Some(path) => {
+                println!("{}", "Icono extraído correctamente".green().bold());
+                path
+            }
+            None => {
+                eprintln!(
+                    "{} No se pudo obtener icono, se continuará sin él",
+                    "WARN:".yellow()
+                );
+                PathBuf::new()
+            }
+        }
+    };
+
+    let Some(desktop_entries_dir) = setup_desktop_entries_dir() else {
+        return;
+    };
+
+    let desktop_entry = DesktopEntry {
+        name: capitalized_name.clone(),
+        exec: final_file_path,
+        icon: icon_path,
+        categories: args.categories,
+        startup_wm_class: capitalized_name.clone(),
+    };
+
+    let desktop_file_name = format!("{}.desktop", capitalized_name);
+    let desktop_file_path = desktop_entries_dir.join(desktop_file_name);
+
+    match desktop_entry.write_to_file(&desktop_file_path) {
+        Ok(()) => {
+            println!(
+                "{} {}",
+                "Acceso directo creado en".green().bold(),
+                desktop_file_path.display().to_string().green().bold()
+            );
+        }
+        Err(e) => {
+            eprintln!(
+                "{} No se pudo crear el acceso directo: {}",
+                "ERROR:".red().bold(),
+                e
+            );
+            return;
         }
     }
+
+    let output = Command::new("update-desktop-database")
+        .arg(&desktop_entries_dir)
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            println!(
+                "{}",
+                "Base de datos de aplicaciones actualizada".green().bold()
+            );
+        }
+        Ok(output) => {
+            eprintln!(
+                "{} No se pudo actualizar la base de datos (código: {})",
+                "WARN:".yellow(),
+                output.status
+            );
+            println!(
+                "{} Para que la aplicación aparezca en el menú, ejecuta: update-desktop-database {}",
+                "TIP:".yellow(),
+                desktop_entries_dir.display()
+            );
+        }
+        Err(e) => {
+            eprintln!(
+                "{} No se pudo ejecutar update-desktop-database: {}",
+                "WARN:".yellow(),
+                e
+            );
+            println!(
+                "{} Para que la aplicación aparezca en el menú, ejecuta: update-desktop-database {}",
+                "TIP:".yellow(),
+                desktop_entries_dir.display()
+            );
+        }
+    }
+
+    println!(
+        "{} {}",
+        "¡instalado correctamente!".bright_green().bold(),
+        capitalized_name.bright_cyan().bold()
+    );
 }
 
 fn get_home_subdirectory(folder_name: &str) -> Option<PathBuf> {
@@ -238,7 +358,7 @@ fn set_executable_permissions(file_path: &Path) -> bool {
     }
 }
 
-fn copy_icon(icon_source: &str, app_dir: &Path) -> bool {
+fn copy_icon(icon_source: &str, app_dir: &Path) -> Option<PathBuf> {
     let icon_path = Path::new(icon_source);
     let icon_name = match icon_path.file_name() {
         Some(name) => name,
@@ -248,7 +368,7 @@ fn copy_icon(icon_source: &str, app_dir: &Path) -> bool {
                 "ERROR:".red().bold(),
                 "No se pudo obtener el nombre del archivo de icono".red()
             );
-            return false;
+            return None;
         }
     };
 
@@ -260,17 +380,17 @@ fn copy_icon(icon_source: &str, app_dir: &Path) -> bool {
         icon_dest.display().to_string().purple().bold()
     );
 
-    if let Err(e) = std::fs::copy(icon_source, icon_dest) {
+    if let Err(e) = std::fs::copy(icon_source, &icon_dest) {
         eprintln!(
             "{} No se pudo copiar el icono: {}",
             "ERROR:".red().bold(),
             e
         );
-        return false;
+        return None;
     }
 
     println!("{}", "¡Icono copiado correctamente!".green().bold());
-    true
+    Some(icon_dest)
 }
 
 fn find_icons_in_dir(dir: &Path) -> Vec<PathBuf> {
@@ -354,9 +474,10 @@ fn select_best_icon(icons: Vec<PathBuf>) -> Option<PathBuf> {
     None
 }
 
-fn extract_icon_from_appimage(appimage_path: &Path, app_dir: &Path) -> bool {
+fn extract_icon_from_appimage(appimage_path: &Path, app_dir: &Path) -> Option<PathBuf> {
     println!("{} Extrayendo contenidos del AppImage...", "INFO:".cyan());
-    let status = match Command::new(appimage_path)
+
+    match Command::new(appimage_path)
         .arg("--appimage-extract")
         .status()
     {
@@ -366,7 +487,7 @@ fn extract_icon_from_appimage(appimage_path: &Path, app_dir: &Path) -> bool {
             if icons.is_empty() {
                 eprintln!("{} No se encontraron iconos", "WARN:".yellow());
                 let _ = fs::remove_dir_all("squashfs-root");
-                return false;
+                return None;
             }
 
             println!("{} Se encontraron {} iconos", "INFO:".cyan(), icons.len());
@@ -375,16 +496,16 @@ fn extract_icon_from_appimage(appimage_path: &Path, app_dir: &Path) -> bool {
                 println!("{} Mejor icono: {:?}", "INFO:".cyan(), best_icon);
 
                 if let Some(icon_str) = best_icon.to_str() {
-                    if !copy_icon(icon_str, app_dir) {
-                        eprintln!("{} No se pudo copiar el icono extraído", "WARN:".yellow());
-                    }
+                    let result = copy_icon(icon_str, app_dir);
+                    let _ = fs::remove_dir_all("squashfs-root");
+                    return result;
                 } else {
                     eprintln!("{} La ruta del icono no es válida", "WARN:".yellow());
                 }
             }
 
             let _ = fs::remove_dir_all("squashfs-root");
-            true
+            None
         }
         Ok(status) => {
             eprintln!(
@@ -393,12 +514,39 @@ fn extract_icon_from_appimage(appimage_path: &Path, app_dir: &Path) -> bool {
                 "El comando falló con código: {}".red(),
                 status
             );
-            return false;
+            None
         }
         Err(e) => {
             eprintln!("{} No se pudo ejecutar: {}", "ERROR:".red().bold(), e);
-            return false;
+            None
+        }
+    }
+}
+
+fn setup_desktop_entries_dir() -> Option<PathBuf> {
+    let home = match dirs::home_dir() {
+        Some(path) => path,
+        None => {
+            eprintln!(
+                "{} {}",
+                "ERROR:".red().bold(),
+                "No se pudo encontrar el directorio HOME".red()
+            );
+            return None;
         }
     };
-    true
+
+    let desktop_dir = home.join(".local/share/applications");
+
+    if let Err(e) = fs::create_dir_all(&desktop_dir) {
+        eprintln!(
+            "{} No se pudo crear el directorio de entradas: {}",
+            "ERROR:".red().bold(),
+            e
+        );
+        return None;
+    }
+
+    println!("{}", "Directorio de entradas listo".green().bold());
+    Some(desktop_dir)
 }
