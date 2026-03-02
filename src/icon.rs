@@ -131,6 +131,8 @@ pub fn extract_icon_from_appimage(
 
     match Command::new(appimage_path)
         .arg("--appimage-extract")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .status()
     {
         Ok(status) if status.success() => {
