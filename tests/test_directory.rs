@@ -1,4 +1,6 @@
-use anvil_cli::directory::{get_home_subdirectory, setup_app_directory, setup_desktop_entries_dir};
+use anvil_appimage::directory::{
+    get_home_subdirectory, setup_app_directory, setup_desktop_entries_dir,
+};
 use std::fs;
 use std::path::Path;
 use tempfile::TempDir;

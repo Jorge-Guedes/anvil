@@ -1,5 +1,5 @@
 [package]
-name = "anvil-cli"
+name = "anvil-appimage"
 version = "1.0.0"
 authors = ["Jorge Guedes"]
 description = "Automatically install AppImages with desktop integration"

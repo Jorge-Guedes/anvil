@@ -1,4 +1,4 @@
-use anvil_cli::appimage::{check_extension, move_appimage};
+use anvil_appimage::appimage::{check_extension, move_appimage};
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;

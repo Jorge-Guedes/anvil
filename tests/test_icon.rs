@@ -1,4 +1,4 @@
-use anvil_cli::icon::{copy_icon, find_icons_in_dir, select_best_icon};
+use anvil_appimage::icon::{copy_icon, find_icons_in_dir, select_best_icon};
 use std::fs;
 use tempfile::TempDir;
 
