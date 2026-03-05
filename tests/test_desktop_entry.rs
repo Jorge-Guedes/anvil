@@ -1,4 +1,4 @@
-use anvil::desktop_entry::DesktopEntry;
+use anvil_cli::desktop_entry::DesktopEntry;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;

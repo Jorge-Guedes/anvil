@@ -1,4 +1,4 @@
-use anvil::permissions::set_executable_permissions;
+use anvil_cli::permissions::set_executable_permissions;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use tempfile::TempDir;

@@ -1,4 +1,4 @@
-use anvil::utils::{capitalize_name, get_app_name, get_file_name};
+use anvil_cli::utils::{capitalize_name, get_app_name, get_file_name};
 use std::path::Path;
 
 #[test]
