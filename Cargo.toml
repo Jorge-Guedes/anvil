@@ -1,6 +1,6 @@
 [package]
 name = "anvil-appimage"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Jorge Guedes"]
 description = "Automatically install AppImages with desktop integration"
 license = "MIT"
