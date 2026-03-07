@@ -10,6 +10,10 @@ keywords = ["appimage", "linux", "installer", "cli", "desktop"]
 categories = ["command-line-utilities", "filesystem"]
 edition = "2024"
 
+[[bin]]
+name = "anvil"
+path = "src/main.rs"
+
 [dependencies]
 clap = { version = "4.5.60", features = ["derive"] }
 colored = "3.1.1"
